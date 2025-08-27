@@ -12,7 +12,7 @@ import pytz
 # ====== Thông tin đăng nhập và cấu hình ======
 email = "tech.qtdata@gmail.com"
 password = "qtdata@2025"
-message = "Reset 15min (Giải lao)"
+message = "Thông báo: Reset 15min (Giải lao)"
 local_tz = pytz.timezone("Asia/Ho_Chi_Minh")
 
 groups = [
