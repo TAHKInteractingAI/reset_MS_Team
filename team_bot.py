@@ -20,7 +20,8 @@ groups = [
     "iX000s iSSale Boom&Task_1h TTS AA POSITIVE iShowOff/Top-iUp",
     "iX000s iSSale Boom CMT*iHugeNewRev*Top-iUp",
     "iX000s iSSale AU GlobalGroup.NỆN*iHugeNewRev*TiUp",
-    "iX000s iSSale Boom QT*iHugeNewRev*Top-iUp"
+    "iX000s iSSale Boom QT*iHugeNewRev*Top-iUp",
+    "iX000s iSSale AH GlobalGroup.NỆN*iHugeNewRev*TiUp"
 ]
 
 import pickle
