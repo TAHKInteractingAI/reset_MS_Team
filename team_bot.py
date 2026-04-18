@@ -1,6 +1,6 @@
-# team_bot.py  (Version 2 - Stable 2026)
-# GitHub Actions + Microsoft Teams Live
-# Login -> Force Conversations Page -> Search Group -> Send Message
+# team_bot.py
+# Version 2.1 (GitHub Actions Stable / Syntax Checked)
+# Microsoft Teams Live Auto Sender
 
 import os
 import time
@@ -13,12 +13,14 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
+
 from webdriver_manager.chrome import ChromeDriverManager
 
 
-# ==================================================
+# =====================================================
 # CONFIG
-# ==================================================
+# =====================================================
 
 EMAIL = os.environ.get("TEAMS_EMAIL", "tech.qtdata@gmail.com")
 PASSWORD = os.environ.get("TEAMS_PASSWORD", "passnotE@1234")
@@ -41,9 +43,9 @@ GROUPS = [
 ]
 
 
-# ==================================================
+# =====================================================
 # DRIVER
-# ==================================================
+# =====================================================
 
 def create_driver():
     options = webdriver.ChromeOptions()
@@ -66,27 +68,30 @@ def create_driver():
     return driver
 
 
-# ==================================================
-# TOOLS
-# ==================================================
+# =====================================================
+# HELPERS
+# =====================================================
 
-def shot(driver, name):
+def shot(driver, filename):
     try:
-        driver.save_screenshot(name)
+        driver.save_screenshot(filename)
     except:
         pass
 
 
-def safe_click(driver, el):
+def safe_click(driver, element):
     try:
-        el.click()
+        element.click()
     except:
-        driver.execute_script("arguments[0].click();", el)
+        try:
+            driver.execute_script("arguments[0].click();", element)
+        except:
+            pass
 
 
-# ==================================================
+# =====================================================
 # LOGIN
-# ==================================================
+# =====================================================
 
 def login(driver):
     wait = WebDriverWait(driver, 30)
@@ -95,7 +100,7 @@ def login(driver):
         print("🌐 Opening Teams Live...")
         driver.get("https://teams.live.com/v2/")
 
-        # Sign in
+        # Sign in button
         try:
             btn = wait.until(
                 EC.element_to_be_clickable(
@@ -110,6 +115,7 @@ def login(driver):
         email_box = wait.until(
             EC.presence_of_element_located((By.ID, "usernameEntry"))
         )
+        email_box.clear()
         email_box.send_keys(EMAIL)
         email_box.send_keys(Keys.ENTER)
 
@@ -130,12 +136,13 @@ def login(driver):
         pass_box = wait.until(
             EC.presence_of_element_located((By.ID, "passwordEntry"))
         )
+        pass_box.clear()
         pass_box.send_keys(PASSWORD)
         pass_box.send_keys(Keys.ENTER)
 
         time.sleep(5)
 
-        # No button
+        # Stay signed in => No
         try:
             no_btn = WebDriverWait(driver, 8).until(
                 EC.element_to_be_clickable(
@@ -147,10 +154,9 @@ def login(driver):
             pass
 
         print("✅ Login success")
-
         time.sleep(10)
-        shot(driver, "01_login_success.png")
 
+        shot(driver, "01_login_success.png")
         return True
 
     except Exception as e:
@@ -160,9 +166,9 @@ def login(driver):
         return False
 
 
-# ==================================================
-# FORCE CHAT PAGE
-# ==================================================
+# =====================================================
+# GO TO CHAT PAGE
+# =====================================================
 
 def goto_chat_page(driver):
     try:
@@ -176,14 +182,14 @@ def goto_chat_page(driver):
         return False
 
 
-# ==================================================
+# =====================================================
 # FIND SEARCH BOX
-# ==================================================
+# =====================================================
 
 def get_search_box(driver):
     wait = WebDriverWait(driver, 20)
 
-    selectors = [
+    xpaths = [
         '//input[contains(@placeholder,"Search")]',
         '//input[contains(@aria-label,"Search")]',
         '//input[contains(@placeholder,"Find")]',
@@ -192,7 +198,7 @@ def get_search_box(driver):
         '//textarea'
     ]
 
-    for xp in selectors:
+    for xp in xpaths:
         try:
             el = wait.until(
                 EC.presence_of_element_located((By.XPATH, xp))
@@ -205,9 +211,9 @@ def get_search_box(driver):
     raise Exception("Search box not found")
 
 
-# ==================================================
+# =====================================================
 # OPEN GROUP
-# ==================================================
+# =====================================================
 
 def open_group(driver, group_name):
     try:
@@ -220,22 +226,20 @@ def open_group(driver, group_name):
 
         search.send_keys(Keys.CONTROL, "a")
         search.send_keys(Keys.DELETE)
-
         time.sleep(1)
 
         search.send_keys(group_name)
-
         time.sleep(5)
 
-        first_part = group_name[:12]
+        key = group_name[:12]
 
-        result_paths = [
-            f'//*[contains(text(), "{first_part}")]',
-            f'//*[contains(@title, "{first_part}")]',
-            f'//*[contains(@aria-label, "{first_part}")]'
+        result_xpaths = [
+            f'//*[contains(text(), "{key}")]',
+            f'//*[contains(@title, "{key}")]',
+            f'//*[contains(@aria-label, "{key}")]'
         ]
 
-        for xp in result_paths:
+        for xp in result_xpaths:
             try:
                 result = WebDriverWait(driver, 8).until(
                     EC.element_to_be_clickable((By.XPATH, xp))
@@ -248,68 +252,68 @@ def open_group(driver, group_name):
             except:
                 pass
 
-        raise Exception("No matching result")
+        raise Exception("No matching search result")
 
     except Exception as e:
         print(f"⚠️ Cannot open group '{group_name}': {e}")
-        shot(driver, "group_fail.png")
+        shot(driver, "group_failed.png")
         return False
 
 
-# ==================================================
+# =====================================================
 # SEND MESSAGE
-# ==================================================
+# =====================================================
 
 def send_message(driver):
-    try:
-        wait = WebDriverWait(driver, 20)
+    wait = WebDriverWait(driver, 20)
 
-        boxes = [
+    try:
+        selectors = [
             '//div[@contenteditable="true"]',
             '//*[@role="textbox"]',
             '//textarea'
         ]
 
-        msg = None
+        msg_box = None
 
-        for xp in boxes:
+        for xp in selectors:
             try:
-                msg = wait.until(
+                msg_box = wait.until(
                     EC.presence_of_element_located((By.XPATH, xp))
                 )
                 break
             except:
                 pass
 
-        if msg is None:
+        if msg_box is None:
             raise Exception("Message box not found")
 
-        msg.click()
+        msg_box.click()
         time.sleep(1)
 
-        msg.send_keys(MESSAGE)
+        msg_box.send_keys(MESSAGE)
         time.sleep(1)
-        msg.send_keys(Keys.ENTER)
+        msg_box.send_keys(Keys.ENTER)
 
         print("🚀 Message sent")
         shot(driver, "04_sent.png")
-
         time.sleep(3)
+
         return True
 
     except Exception as e:
         print("❌ Send failed:", e)
-        shot(driver, "send_fail.png")
+        shot(driver, "send_failed.png")
         return False
 
 
-# ==================================================
+# =====================================================
 # MAIN
-# ==================================================
+# =====================================================
 
 def main():
     if not EMAIL or not PASSWORD:
-        print("❌ Missing TEAMS_EMAIL / TEAMS_PASSWORD")
+        print("❌ Missing TEAMS_EMAIL or TEAMS_PASSWORD")
         return
 
     driver = create_driver()
@@ -318,7 +322,7 @@ def main():
         if not login(driver):
             return
 
-        if not goto_chat_page():
+        if not goto_chat_page(driver):
             return
 
         for group in GROUPS:
