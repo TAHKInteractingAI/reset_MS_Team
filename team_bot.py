@@ -1,33 +1,24 @@
-# team_bot.py
-# Version 2.2 - Anti-Detection & Teams V2 UI Updated
-import os
-import time
-import tempfile
-import traceback
-
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
-
 from webdriver_manager.chrome import ChromeDriverManager
+from datetime import datetime
+import time
+import pytz
+import os
 
-# =====================================================
-# CONFIG
-# =====================================================
+# ====== Thông tin đăng nhập và cấu hình ======
+# Khuyên dùng os.environ.get để bảo mật, hoặc điền trực tiếp nếu chạy local
+email = os.environ.get('TEAMS_EMAIL') or "tech.qtdata@gmail.com"
+password = os.environ.get('TEAMS_PASSWORD') or "passnotE@1234"
+message_content = "Thông báo: Reset 15min (Giải lao)"
+local_tz = pytz.timezone("Asia/Ho_Chi_Minh")
 
-EMAIL = os.environ.get("TEAMS_EMAIL", "tech.qtdata@gmail.com")
-PASSWORD = os.environ.get("TEAMS_PASSWORD", "passnotE@1234")
-
-MESSAGE = os.environ.get(
-    "TEAMS_MESSAGE",
-    "Thông báo: Reset 15min (Giải lao)"
-)
-
-GROUPS = [
+# Danh sách nhóm (Đã cập nhật các nhóm mới)
+groups = [
     "BoomWTF..AiLàmViệcRiêng*ThựcNÃO*ProofFileNGAY",
     "iX000s iSSale Boom&Task_1h TTS AA POSITIVE iShowOff/Top-iUp",
     "iX000s iSSale Boom CMT*iHugeNewRev*Top-iUp",
@@ -36,234 +27,132 @@ GROUPS = [
     "iX000s iSSale AH GlobalGroup.NỆN*iHugeNewRev*TiUp",
     "SAM Foundation TTSVol",
     "iX000s iSSale Boom&Task_1h TTS NB POSITIVE iShowOff/Top-iUp",
-    "iX000s iSSale Boom&Task_1h TTS TAHK Foundation POSITIVE iShowOff/Top-iUp"
+    "iX000s iSSale Boom&Task_1h TTS TAHK Foundation POSITIVE iShowOff/Top-iUp",
 ]
 
-# =====================================================
-# DRIVER SETUP
-# =====================================================
-
-def create_driver():
+def login():
+    import tempfile
     options = webdriver.ChromeOptions()
-    options.add_argument("--headless=new")
+    options.add_argument("--headless")  # Chạy ẩn danh trên GitHub Actions
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
-    
-    # Giả lập User-Agent để tránh bị nhận diện là Bot
-    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
+    temp_dir = tempfile.mkdtemp()
+    options.add_argument(f"--user-data-dir={temp_dir}")
 
-    user_dir = tempfile.mkdtemp()
-    options.add_argument(f"--user-data-dir={user_dir}")
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    driver.get("https://teams.live.com/v2/")
+    wait = WebDriverWait(driver, 25)
 
-    driver = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()),
-        options=options
-    )
-    driver.set_page_load_timeout(90)
-    return driver
-
-# =====================================================
-# HELPERS
-# =====================================================
-
-def shot(driver, filename):
     try:
-        driver.save_screenshot(filename)
-    except:
-        pass
-
-def safe_click(driver, element):
-    try:
-        element.click()
-    except:
-        driver.execute_script("arguments[0].click();", element)
-
-# =====================================================
-# LOGIN LOGIC
-# =====================================================
-
-def login(driver):
-    wait = WebDriverWait(driver, 30)
-    try:
-        print("🌐 Opening Teams Live...")
-        driver.get("https://teams.live.com/v2/")
-
-        # Email
-        email_box = wait.until(EC.presence_of_element_located((By.ID, "usernameEntry")))
-        email_box.send_keys(EMAIL)
-        email_box.send_keys(Keys.ENTER)
+        # Bước 1: Click Sign in
+        sign_in_btn = wait.until(EC.element_to_be_clickable((By.XPATH, '//button[contains(., "Sign in")]')))
+        sign_in_btn.click()
+        
+        # Bước 2: Nhập Email
+        email_input = wait.until(EC.presence_of_element_located((By.ID, "usernameEntry")))
+        email_input.send_keys(email)
+        email_input.send_keys(Keys.RETURN)
         time.sleep(3)
 
-        # Password
-        pass_box = wait.until(EC.presence_of_element_located((By.ID, "passwordEntry")))
-        pass_box.send_keys(PASSWORD)
-        pass_box.send_keys(Keys.ENTER)
-        time.sleep(5)
+        # Bước 3: Xử lý nút 'Use your password' nếu có
+        try:
+            use_pass_btn = WebDriverWait(driver, 8).until(
+                EC.element_to_be_clickable((By.XPATH, '//span[contains(text(), "Use your password")]'))
+            )
+            use_pass_btn.click()
+        except:
+            pass
 
-        # Skip "Stay signed in?"
+        # Bước 4: Nhập Password
+        pass_input = wait.until(EC.presence_of_element_located((By.ID, "passwordEntry")))
+        pass_input.send_keys(password)
+        pass_input.send_keys(Keys.RETURN)
+        
+        # Bước 5: Vượt qua các màn hình phụ (Stay signed in / No)
         try:
             no_btn = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.XPATH, '//button[contains(.,"No") or contains(.,"Không")]'))
+                EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[data-testid="secondaryButton"]'))
             )
-            safe_click(driver, no_btn)
+            no_btn.click()
         except:
             pass
 
-        print("✅ Login process completed")
-        return True
+        print("✅ Đăng nhập thành công!")
+        time.sleep(15) # Chờ danh sách chat tải hoàn toàn
+        return driver
     except Exception as e:
-        print("❌ Login failed:", e)
-        shot(driver, "login_failed.png")
-        return False
+        print(f"❌ Lỗi đăng nhập: {e}")
+        driver.quit()
+        return None
 
-# =====================================================
-# CORE ACTIONS
-# =====================================================
-
-def goto_chat_page(driver):
+def open_chat_with_scroll(driver, chat_name):
+    """Hàm tìm chat có hỗ trợ cuộn chuột nếu không thấy tên nhóm"""
+    wait = WebDriverWait(driver, 15)
     try:
-        print("📨 Navigating to Conversations...")
-        driver.get("https://teams.live.com/v2/#/conversations")
-        time.sleep(15) # Teams cần thời gian rất lâu để khởi tạo app v2
-        
-        # Dọn dẹp các popup hướng dẫn (Coachmarks) che màn hình
+        # Thử tìm trực tiếp xem nhóm có hiện sẵn không
         try:
-            popups = driver.find_elements(By.XPATH, '//button[contains(.,"Got it") or contains(.,"Dismiss") or contains(.,"Đã hiểu")]')
-            for btn in popups:
-                safe_click(driver, btn)
+            xpath = f"//span[contains(normalize-space(), '{chat_name}')]"
+            chat_element = driver.find_element(By.XPATH, xpath)
         except:
-            pass
+            print(f"🔄 Đang cuộn danh sách để tìm nhóm: {chat_name}")
+            # Tìm vùng chứa danh sách chat để thực hiện scroll
+            container = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '[data-tid="message-pane-list-runway"]')))
             
-        shot(driver, "02_chat_page.png")
+            found = False
+            for _ in range(10): # Cuộn tối đa 10 lần
+                driver.execute_script("arguments[0].scrollTop += 600;", container)
+                time.sleep(1.5)
+                try:
+                    chat_element = driver.find_element(By.XPATH, xpath)
+                    if chat_element.is_displayed():
+                        found = True
+                        break
+                except:
+                    continue
+            
+            if not found:
+                raise Exception("Không tìm thấy tên nhóm sau khi cuộn")
+
+        # Click vào nhóm
+        driver.execute_script("arguments[0].scrollIntoView(true);", chat_element)
+        time.sleep(1)
+        driver.execute_script("arguments[0].click();", chat_element)
+        print(f"📂 Đã mở nhóm: {chat_name}")
+        time.sleep(3)
         return True
     except Exception as e:
-        print("❌ Navigation error:", e)
-        return False
-
-def get_search_box(driver):
-    wait = WebDriverWait(driver, 20)
-    # Danh sách các Selector cập nhật cho Teams V2
-    xpaths = [
-        '//input[@data-tid="search-input-field"]',
-        '//input[@id="search-query"]',
-        '//input[contains(@placeholder, "Search") or contains(@placeholder, "Tìm kiếm")]',
-        '//button[@aria-label="Search" or @aria-label="Tìm kiếm"]'
-    ]
-
-    for xp in xpaths:
-        try:
-            el = wait.until(EC.presence_of_element_located((By.XPATH, xp)))
-            if el.is_displayed():
-                # Nếu tìm thấy nút Search thay vì ô Input, bấm vào nút đó trước
-                if el.tag_name == "button":
-                    safe_click(driver, el)
-                    time.sleep(2)
-                    return get_search_box(driver) # Đệ quy lại để lấy ô input thực sự
-                return el
-        except:
-            continue
-    raise Exception("Search box UI not found")
-
-def open_group(driver, group_name):
-    try:
-        print(f"🔎 Searching: {group_name}")
-        search = get_search_box(driver)
-        
-        search.click()
-        time.sleep(1)
-        search.send_keys(Keys.CONTROL, "a")
-        search.send_keys(Keys.DELETE)
-        time.sleep(1)
-        search.send_keys(group_name)
-        time.sleep(6) # Đợi kết quả tìm kiếm render
-
-        # Lấy từ khóa ngắn để tìm trong danh sách kết quả (Tránh lỗi ký tự đặc biệt)
-        key_short = group_name[:10]
-        result_xpaths = [
-            f'//div[contains(@aria-label, "{key_short}")]',
-            f'//span[contains(text(), "{key_short}")]',
-            f'//div[@role="listitem"]//span[contains(., "{key_short}")]'
-        ]
-
-        for xp in result_xpaths:
-            try:
-                results = driver.find_elements(By.XPATH, xp)
-                for res in results:
-                    if res.is_displayed():
-                        safe_click(driver, res)
-                        print(f"📂 Group '{group_name}' selected")
-                        time.sleep(4)
-                        return True
-            except:
-                continue
-
-        raise Exception("Result not found in list")
-    except Exception as e:
-        print(f"⚠️ Skip '{group_name}': {e}")
-        shot(driver, f"failed_{group_name[:5]}.png")
+        print(f"⚠️ Không thể tìm thấy nhóm '{chat_name}': {e}")
         return False
 
 def send_message(driver):
-    wait = WebDriverWait(driver, 15)
     try:
-        # Selector cho ô nhập liệu Teams V2 (thường là div contenteditable)
-        selectors = [
-            '//div[@contenteditable="true" and @role="textbox"]',
-            '//div[@aria-label="Type a message" or @aria-label="Nhập tin nhắn"]',
-            '//*[@role="textbox"]'
-        ]
-
-        msg_box = None
-        for xp in selectors:
-            try:
-                msg_box = wait.until(EC.presence_of_element_located((By.XPATH, xp)))
-                if msg_box.is_displayed(): break
-            except:
-                pass
-
-        if not msg_box: raise Exception("Input box not found")
-
-        msg_box.click()
-        time.sleep(1)
-        msg_box.send_keys(MESSAGE)
-        time.sleep(1)
+        # Tìm ô nhập tin nhắn
+        msg_box = WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.XPATH, '//div[@contenteditable="true"]'))
+        )
+        msg_box.send_keys(message_content)
         msg_box.send_keys(Keys.ENTER)
-
-        print("🚀 Message sent successfully")
+        print("🚀 Đã gửi tin nhắn thành công.")
         time.sleep(2)
-        return True
     except Exception as e:
-        print("❌ Send error:", e)
-        return False
+        print(f"❌ Lỗi khi gửi tin nhắn: {e}")
 
-# =====================================================
-# MAIN EXECUTION
-# =====================================================
-
-def main():
-    if not EMAIL or not PASSWORD:
-        print("❌ Credentials missing in Environment Variables")
+def job_wrapper():
+    driver = login()
+    if not driver:
         return
 
-    driver = create_driver()
-    try:
-        if not login(driver): return
-        if not goto_chat_page(driver): return
-
-        for group in GROUPS:
-            print(f"\n--- Processing: {group} ---")
-            if open_group(driver, group):
-                send_message(driver)
-            
-            # Quay lại trang chủ chat để reset trạng thái tìm kiếm cho group sau
-            driver.execute_script("window.scrollTo(0, 0);")
-            time.sleep(2)
-
-        print("\n✅ Task completed.")
-    finally:
-        driver.quit()
+    for group in groups:
+        print(f"\n--- Xử lý nhóm: {group} ---")
+        if open_chat_with_scroll(driver, group):
+            send_message(driver)
+        
+    print("\n✅ Hoàn tất tất cả các nhóm!")
+    driver.quit()
 
 if __name__ == "__main__":
-    main()
+    # Bạn có thể thêm logic kiểm tra giờ ở đây nếu chạy Cron 24/7
+    # now = datetime.now(local_tz)
+    # if (now.hour, now.minute) in [(9, 45), (15, 15)]:
+    job_wrapper()
