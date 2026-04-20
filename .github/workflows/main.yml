@@ -24,4 +24,13 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run script
-        run: python team_bot.py
+        run: |
+          xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" python team_bot.py
+      
+      - name: Upload Screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linkedin-screenshots
+          path: ./*.png
+          retention-days: 2
