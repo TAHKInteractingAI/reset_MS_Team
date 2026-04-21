@@ -62,7 +62,7 @@ def get_driver():
         options.add_argument(f'--proxy-server={proxy_url}')
     
     # Khởi tạo undetected_chromedriver (Không dùng webdriver.Chrome thông thường)
-    driver = uc.Chrome(options=options)
+    driver = uc.Chrome(options=options, version_main=146)
     
     # 6. [CHỐNG PHÁT HIỆN] Bơm thêm Stealth Script qua CDP
     driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
@@ -106,7 +106,8 @@ def login():
     driver.get("https://teams.live.com/v2/")
     
     wait = WebDriverWait(driver, 30)
-
+    if not email or not password:
+        raise ValueError("LỖI: Chưa cấu hình biến môi trường TEAMS_EMAIL hoặc TEAMS_PASSWORD")
     try:
         print("⏳ Đang tiến hành đăng nhập...")
         # Bước 1: Click Sign in
@@ -214,7 +215,7 @@ def send_message(driver):
         
         msg_box.click()
         time.sleep(1)
-        msg_box.send_keys(f"Testing: {message_content}")
+        msg_box.send_keys(f"{message_content}")
         msg_box.send_keys(Keys.ENTER)
         
         print("🚀 Đã gửi tin nhắn thành công.")
