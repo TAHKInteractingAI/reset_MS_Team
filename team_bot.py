@@ -13,8 +13,8 @@ from webdriver_manager.chrome import ChromeDriverManager
 import undetected_chromedriver as uc
 
 # ====== Cấu hình thông tin ======
-email = os.environ.get('TEAMS_EMAIL') or "tech.qtdata@gmail.com"
-password = os.environ.get('TEAMS_PASSWORD') or "passnotE@1234"
+email = os.environ.get('TEAMS_EMAIL')
+password = os.environ.get('TEAMS_PASSWORD')
 message_content = "Thông báo: Reset 15min (Giải lao)"
 local_tz = pytz.timezone("Asia/Ho_Chi_Minh")
 
