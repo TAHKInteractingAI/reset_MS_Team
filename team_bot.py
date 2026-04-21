@@ -214,7 +214,7 @@ def send_message(driver):
         
         msg_box.click()
         time.sleep(1)
-        msg_box.send_keys(f"{message_content}")
+        msg_box.send_keys(f"Testing: {message_content}")
         msg_box.send_keys(Keys.ENTER)
         
         print("🚀 Đã gửi tin nhắn thành công.")
