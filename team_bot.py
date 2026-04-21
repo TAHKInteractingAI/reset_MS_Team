@@ -106,8 +106,6 @@ def login():
     driver.get("https://teams.live.com/v2/")
     
     wait = WebDriverWait(driver, 30)
-    if not email or not password:
-        raise ValueError("LỖI: Chưa cấu hình biến môi trường TEAMS_EMAIL hoặc TEAMS_PASSWORD")
     try:
         print("⏳ Đang tiến hành đăng nhập...")
         # Bước 1: Click Sign in

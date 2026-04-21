@@ -24,6 +24,9 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run script
+        env:
+          TEAMS_EMAIL: ${{ secrets.TEAMS_EMAIL }}
+          TEAMS_PASSWORD: ${{ secrets.TEAMS_PASSWORD }}
         run: python team_bot.py
       
       - name: Upload Screenshot
