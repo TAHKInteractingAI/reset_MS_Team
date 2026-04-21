@@ -11,9 +11,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 import undetected_chromedriver as uc
-from dotenv import load_dotenv
-
-load_dotenv()
 
 # ====== Cấu hình thông tin ======
 email = os.environ.get('TEAMS_EMAIL')
@@ -65,7 +62,7 @@ def get_driver():
         options.add_argument(f'--proxy-server={proxy_url}')
     
     # Khởi tạo undetected_chromedriver (Không dùng webdriver.Chrome thông thường)
-    driver = uc.Chrome(options=options, version_main=146)
+    driver = uc.Chrome(options=options)
     
     # 6. [CHỐNG PHÁT HIỆN] Bơm thêm Stealth Script qua CDP
     driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {

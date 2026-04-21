@@ -2,4 +2,3 @@ selenium
 webdriver-manager
 pytz
 undetected-chromedriver
-python-dotenv
